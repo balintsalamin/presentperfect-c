@@ -1,0 +1,172 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wiki PowerPoint Party</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Bangers&family=Pacifico&family=Permanent+Marker&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:600 17px 'Baloo 2',sans-serif;color:#1b1340;background:#ffd23f radial-gradient(#ff3d8144 20%,transparent 21%) 0 0/44px 44px;min-height:100vh}
+button,select,input{font:inherit;color:inherit}
+.card{background:#fff8ec;border:4px solid #1b1340;border-radius:32px;padding:26px;box-shadow:0 10px 0 #1b1340;max-width:540px;margin:7vh auto;text-align:center}
+h1{font-size:2.5em;line-height:1.05;margin:0 0 8px;color:#ff3d81;-webkit-text-stroke:2px #1b1340;paint-order:stroke fill;text-shadow:0 4px 0 #1b1340}
+.btn{border:3px solid #1b1340;border-radius:18px;padding:6px 16px;background:#2ee6a6;font-weight:800;cursor:pointer;box-shadow:0 5px 0 #1b1340;transition:transform .08s,box-shadow .08s;margin:4px}
+.btn:hover{transform:translateY(-2px) rotate(-1deg)}.btn:active{transform:translateY(5px);box-shadow:0 0 #1b1340}
+.btn.p{background:#ff3d81;color:#fff}.btn.y{background:#ffd23f}.btn.on{background:#3ea6ff;color:#fff}
+input,select{border:3px solid #1b1340;border-radius:14px;padding:6px 12px;margin:4px;background:#fff}
+.chip{display:inline-block;background:#3ea6ff;color:#fff;border:3px solid #1b1340;border-radius:99px;padding:2px 14px;margin:4px;animation:pop .5s cubic-bezier(.2,2,.4,1)}
+.pop{animation:pop .5s cubic-bezier(.2,2,.4,1)}@keyframes pop{from{transform:scale(0) rotate(-8deg)}}
+#bar{position:fixed;top:10px;right:14px;z-index:9;background:#1b1340;color:#ffd23f;border-radius:99px;padding:2px 20px;font-size:1.8em;font-weight:800}
+.wrap{display:flex;gap:10px;padding:10px;height:100vh}
+#wiki{flex:1;min-width:0;overflow:auto;background:#fff;border:4px solid #1b1340;border-radius:22px;padding:18px;font:400 16px/1.5 Georgia,serif;color:#222}
+#wiki img{max-width:100%;height:auto;cursor:grab}#wiki table{max-width:100%;font-size:14px}#wiki a{color:inherit}
+#ed{flex:1.2;min-width:0;display:flex;flex-direction:column;gap:6px;overflow:auto}
+.tb{display:flex;flex-wrap:wrap;align-items:center}.tb .btn{padding:0 10px;margin:2px;box-shadow:0 3px 0 #1b1340}
+canvas.sl{width:100%;background:#fff;border:4px solid #1b1340;border-radius:14px;touch-action:none}
+.vb{width:46px;height:46px;padding:0;font-size:1.3em}
+.stage{min-height:100vh;display:grid;place-content:center;text-align:center;color:#fff;background:radial-gradient(circle at 50% 30%,#5b2bd6,#1b1340 70%)}
+.stage h1{font-size:4em}
+.pod{display:flex;align-items:flex-end;justify-content:center}
+.col{opacity:0;transform:translateY(160px) scale(.6);transition:.9s cubic-bezier(.2,1.6,.4,1);margin:0 6px}.col.up{opacity:1;transform:none}
+.bl{width:min(28vw,160px);border:4px solid #fff;border-radius:14px 14px 0 0;font-size:3.5em;font-weight:800;color:#1b1340}
+@media(max-width:800px){.wrap{flex-direction:column;height:auto}#wiki{height:45vh}}
+</style></head><body>
+<div id="mu"></div><div id="bar" hidden></div><div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const T={en:{title:'Wiki PowerPoint Party',sub:'Get a random Wikipedia page. Turn it into a masterpiece. Get rated!',name:'Your name',create:'Create room',join:'Join',code:'Room code',rt:'Read time (s)',bt:'Build time (s)',go:'Start game!',wait:'Waiting for the others…',read:'📖 Read carefully – the slides start soon!',tip:'Drag text and images from Wikipedia onto the slide. Double-click text to edit.',sl:'Slide',txt:'Your text:',rate:'Rate it 1–10!',fin:'Finish ✅',drum:'And the score is…',again:'Next round',yt:'🎵 YouTube link',votes:'votes'},
+hu:{title:'Wiki PowerPoint Party',sub:'Kapsz egy random Wikipédia-oldalt. Csinálj belőle remekművet. Pontozzanak!',name:'Neved',create:'Szoba létrehozása',join:'Csatlakozás',code:'Szobakód',rt:'Olvasási idő (mp)',bt:'Szerkesztési idő (mp)',go:'Indul a játék!',wait:'Várakozás a többiekre…',read:'📖 Olvasd el figyelmesen – mindjárt jönnek a diák!',tip:'Húzz szöveget és képet a Wikipédiáról a diára. Szöveg szerkesztése: dupla katt.',sl:'Dia',txt:'Szöveg:',rate:'Pontozd 1–10!',fin:'Kész ✅',drum:'És a pontszám…',again:'Következő kör',yt:'🎵 YouTube link',votes:'szavazat'}};
+let L='en',S={me:Math.random().toString(36).slice(2,8),players:{},decks:{},votes:{},conns:[]},E,redraw=()=>{};
+const t=k=>T[L][k],cl=s=>(s||'').replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,14)||'Player',yt=u=>(u.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/)||[])[1]||'',show=h=>$('#app').innerHTML=h,
+FONTS=['Arial','Bangers','Pacifico','Permanent Marker','Georgia','Courier New','Impact'],STK=['😂','🔥','💯','🎉','👑','🦄','💩','🍕','❤️','⭐','🤯','😎'],
+AC=new(window.AudioContext||window.webkitAudioContext)(),X=document.createElement('canvas').getContext('2d'),IM={},
+cs=()=>E.slides[E.i],chips=()=>Object.values(S.players).map(n=>`<span class=chip>${n}</span>`).join('');
+addEventListener('pointerdown',()=>AC.resume());
+FONTS.forEach(f=>document.fonts.load(`40px "${f}"`).then(()=>redraw()));
+function snd(f,d=.15,ty='square'){try{const o=AC.createOscillator(),g=AC.createGain();o.type=ty;o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d)}catch(e){}}
+const tada=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>snd(f,.35,'sawtooth'),i*110));
+function confetti(){const c=document.createElement('canvas');c.style='position:fixed;inset:0;pointer-events:none';c.width=innerWidth;c.height=innerHeight;document.body.append(c);const x=c.getContext('2d'),P=Array.from({length:200},()=>({x:Math.random()*c.width,y:-Math.random()*c.height,v:2+Math.random()*4,s:6+Math.random()*8,h:Math.random()*360}));let f=0;(function a(){x.clearRect(0,0,c.width,c.height);P.forEach(p=>{p.y+=p.v;p.x+=Math.sin(p.y/30);x.fillStyle=`hsl(${p.h},90%,60%)`;x.fillRect(p.x,p.y,p.s,p.s*.6)});f++<450?requestAnimationFrame(a):c.remove()})()}
+/* ---------- networking: host relays everything, everyone applies what the host broadcasts ---------- */
+function bc(m){S.conns.forEach(c=>c.send(m));on(m)}
+function net(m){m.from=S.me;S.host?bc(m):S.c.send(m)}
+function mk(){S.name=cl($('#nm').value);S.host=1;S.code=Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random()*24|0]).join('');
+ S.peer=new Peer('wpp-'+S.code);S.peer.on('open',()=>net({t:'hi',name:S.name}));
+ S.peer.on('connection',c=>{c.on('open',()=>S.conns.push(c));c.on('close',()=>S.conns=S.conns.filter(x=>x!=c));c.on('data',m=>{if(m.t=='hi'){S.players[m.from]=cl(m.name);c.send({t:'roster',p:S.players})}bc(m)})});
+ S.peer.on('error',e=>alert(e.type))}
+function jn(){S.name=cl($('#nm').value);S.code=$('#cd').value.trim().toUpperCase();S.peer=new Peer();
+ S.peer.on('open',()=>{S.c=S.peer.connect('wpp-'+S.code,{reliable:true});S.c.on('open',()=>net({t:'hi',name:S.name}));S.c.on('data',on)});S.peer.on('error',e=>alert(e.type))}
+function on(m){switch(m.t){
+ case'hi':S.players[m.from]=cl(m.name);upd();break;
+ case'roster':S.players=m.p;upd();break;
+ case'go':S.cfg=m;S.decks={};S.votes={};S.started=0;S.q=Object.keys(S.players).sort(()=>Math.random()-.5);E={slides:[{o:[]}],i:0,fo:FONTS[0],co:'#ff3d81',tool:'sel',music:''};read();
+  if(S.host){const rd=S.rd=(S.rd||0)+1;setTimeout(()=>{if(S.rd==rd&&!S.started){S.started=1;next()}},(m.r+m.b+12)*1e3)}break;
+ case'deck':S.decks[m.from]=m;if(S.host&&!S.started&&Object.keys(S.decks).length>=Object.keys(S.players).length){S.started=1;setTimeout(next,1500)}break;
+ case'pres':S.cur=m.who;S.i=0;S.decks[m.who]=S.decks[m.who]||{slides:[{o:[]}],music:''};present();break;
+ case'sl':S.i=Math.max(0,Math.min(m.i|0,S.decks[S.cur].slides.length-1));redraw();break;
+ case'vote':if(m.from!=S.cur){(S.votes[S.cur]=S.votes[S.cur]||{})[m.from]=Math.min(10,Math.max(1,m.v|0));const c=$('#vc');if(c)c.textContent=Object.keys(S.votes[S.cur]).length+' '+t('votes')}break;
+ case'fin':if(S.host&&m.from==S.cur)setTimeout(next,900);break;
+ case'rev':reveal()}}
+function next(){const w=S.q.shift();bc({t:w?'pres':'rev',who:w,from:S.me})}
+/* ---------- screens ---------- */
+function home(){show(`<div class="card pop"><h1>📽️ ${t('title')}</h1><p>${t('sub')}</p><select id=lg>${Object.keys(T).map(k=>`<option ${k==L?'selected':''}>${k}`).join('')}</select><br><input id=nm maxlength=14 placeholder="${t('name')}" value="${S.name||''}"><br><button class="btn p" onclick="mk()">${t('create')}</button><hr><input id=cd placeholder="${t('code')}" style="width:120px;text-transform:uppercase"> <button class=btn onclick="jn()">${t('join')}</button></div>`);
+ $('#lg').onchange=e=>{S.name=$('#nm').value;L=e.target.value;home()}}
+function upd(){if(S.ph)return;const e=$('#pl');e?e.innerHTML=chips():lobby()}
+function lobby(){show(`<div class="card pop"><h1>${t('title')}</h1><p>${t('code')}: <b style="font-size:2.6em;letter-spacing:6px">${S.code}</b></p><div id=pl>${chips()}</div>${S.host?`<p>${t('rt')} <input id=rt type=number value=90 style="width:80px"><br>${t('bt')} <input id=bt type=number value=300 style="width:80px"></p><button class="btn p" onclick="start()">${t('go')}</button>`:`<p>${t('wait')}</p>`}</div>`)}
+const start=()=>net({t:'go',r:Math.max(10,+$('#rt').value||90),b:Math.max(20,+$('#bt').value||300)}),again=()=>net({t:'go',r:S.cfg.r,b:S.cfg.b});
+function timer(s,cb){clearInterval(S.iv);const e=Date.now()+s*1e3,b=$('#bar');b.hidden=0;S.iv=setInterval(()=>{const r=Math.max(0,Math.ceil((e-Date.now())/1e3));b.textContent=(r/60|0)+':'+String(r%60).padStart(2,'0');if(!r){clearInterval(S.iv);b.hidden=1;cb()}},250)}
+async function wiki(){const u=`https://${L}.wikipedia.org/w/api.php?origin=*&format=json&`,j=async q=>(await fetch(u+q)).json();
+ const ti=(await j('action=query&list=random&rnnamespace=0&rnlimit=1')).query.random[0].title;
+ const d=new DOMParser().parseFromString((await j('action=parse&prop=text&disableeditsection=1&redirects=1&page='+encodeURIComponent(ti))).parse.text['*'],'text/html');
+ d.querySelectorAll('.mw-editsection,.navbox,.reflist,.reference,.noprint,.metadata,.hatnote,.toc,style,script,.mw-empty-elt').forEach(e=>e.remove());
+ d.querySelectorAll('img').forEach(i=>{i.setAttribute('crossorigin','anonymous');i.removeAttribute('srcset');i.removeAttribute('loading')});
+ return{ti,h:`<h1 style="color:#222;-webkit-text-stroke:0;text-shadow:none;font-size:2em">${ti}</h1>`+d.body.innerHTML}}
+async function read(){S.ph='w';show(`<div class=wrap><div id=wiki>…</div></div>`);
+ const w=await wiki().catch(()=>({ti:'?',h:'<p>Wikipedia unreachable 😢</p>'}));S.wk=w.h;S.wt=w.ti;
+ $('#wiki').innerHTML=`<h3 style="margin:0;color:#ff3d81;font-family:'Baloo 2'">${t('read')}</h3>`+w.h;timer(S.cfg.r,build)}
+/* ---------- slide renderer (also used for presenting + PNG export) ---------- */
+const img=s=>IM[s]||(IM[s]=Object.assign(new Image,{crossOrigin:'anonymous',src:s,onload:()=>redraw()}));
+function paint(c,sl){c.fillStyle='#fff';c.fillRect(0,0,960,540);sl.o.forEach(o=>{c.fillStyle=c.strokeStyle=o.c||'#1b1340';
+ if(o.k=='t'){c.font=o.size+'px '+o.font;c.textBaseline='top';o.text.split('\n').forEach((l,i)=>c.fillText(l,o.x,o.y+i*o.size*1.2))}
+ else if(o.k=='i'){const m=img(o.src);if(m.complete&&m.naturalWidth)c.drawImage(m,o.x,o.y,o.w,o.h)}
+ else if(o.k=='s'){const{x,y,w,h}=o;c.beginPath();
+  if(o.shape=='rect')c.rect(x,y,w,h);else if(o.shape=='ell')c.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,7);
+  else if(o.shape=='tri'){c.moveTo(x+w/2,y);c.lineTo(x+w,y+h);c.lineTo(x,y+h);c.closePath()}
+  else for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,r=i%2?.4:1;c[i?'lineTo':'moveTo'](x+w/2+Math.cos(a)*r*w/2,y+h/2+Math.sin(a)*r*h/2)}
+  c.fill()}
+ else{c.lineWidth=o.w;c.lineCap=c.lineJoin='round';c.beginPath();o.pts.forEach((p,i)=>c[i?'lineTo':'moveTo'](p[0]+o.x,p[1]+o.y));c.stroke()}})}
+function bb(o){if(o.k=='t'){X.font=o.size+'px '+o.font;const l=o.text.split('\n');return[o.x,o.y,Math.max(...l.map(s=>X.measureText(s).width)),l.length*o.size*1.2]}
+ if(o.k=='d'){const a=o.pts.map(p=>p[0]),b=o.pts.map(p=>p[1]),x=Math.min(...a)+o.x,y=Math.min(...b)+o.y;return[x,y,Math.max(...a)+o.x-x,Math.max(...b)+o.y-y]}
+ return[o.x,o.y,o.w,o.h]}
+const hit=p=>[...cs().o].reverse().find(o=>{const[x,y,w,h]=bb(o);return p[0]>=x-8&&p[0]<=x+w+8&&p[1]>=y-8&&p[1]<=y+h+8}),
+sc=(o,f)=>{if(o.k=='t')o.size*=f;else if(o.k=='d')o.w*=f;else{o.w*=f;o.h*=f}};
+function add(o){cs().o.push(o);E.sel=o;draw()}
+function draw(){const c=$('#cv');if(!c)return;const x=c.getContext('2d');paint(x,cs());
+ if(E.sel){const b=bb(E.sel);x.strokeStyle='#3ea6ff';x.lineWidth=3;x.setLineDash([8,6]);x.strokeRect(...b);x.setLineDash([])}
+ $('#sn').textContent=(E.i+1)+'/'+E.slides.length}
+async function dl(sls,name){sls.forEach(s=>s.o.forEach(o=>o.k=='i'&&img(o.src)));await sleep(700);
+ for(const[i,s]of sls.entries()){const c=document.createElement('canvas');c.width=960;c.height=540;paint(c.getContext('2d'),s);
+  try{const a=document.createElement('a');a.href=c.toDataURL();a.download=`${name}-${i+1}.png`;a.click()}catch(e){alert('Export blocked (image CORS)');return}await sleep(300)}}
+/* ---------- the editor ---------- */
+function build(){S.ph='b';
+ show(`<div class=wrap><div id=wiki>${S.wk}</div><div id=ed>
+ <div class=tb><button class=btn data-a=pv>◀</button><b id=sn></b><button class=btn data-a=nx>▶</button><button class="btn y" data-a=ad>＋${t('sl')}</button><button class="btn p" data-a=ds>🗑${t('sl')}</button>
+ <button class="btn on" data-a=sel>🖱</button><button class=btn data-a=tx>T</button><button class=btn data-a=pen>✏️</button>
+ <button class=btn data-a=rect>■</button><button class=btn data-a=ell>●</button><button class=btn data-a=tri>▲</button><button class=btn data-a=star>★</button>
+ <select id=fo>${FONTS.map(f=>`<option style="font-family:${f}">${f}`).join('')}</select><input type=color id=co value=#ff3d81>
+ <button class=btn data-a=up>＋</button><button class=btn data-a=dn>－</button><button class="btn p" data-a=del>🗑</button><button class=btn data-a=png>⬇PNG</button></div>
+ <div class=tb>${STK.map(s=>`<button class=btn data-s="${s}">${s}</button>`).join('')}<input id=yt placeholder="${t('yt')}" style="flex:1;min-width:120px"></div>
+ <canvas class=sl id=cv width=960 height=540></canvas><small>${t('tip')}</small></div></div>`);
+ const cv=$('#cv'),xy=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*960/r.width,(e.clientY-r.top)*540/r.height]};redraw=draw;
+ $('#wiki').onclick=e=>e.preventDefault();
+ $('#wiki').ondragstart=e=>{if(e.target.tagName=='IMG'){e.dataTransfer.setData('img',e.target.src);e.dataTransfer.setData('ar',e.target.naturalHeight/e.target.naturalWidth)}};
+ $('#ed').onclick=e=>{const b=e.target.closest('button');if(!b)return;const a=b.dataset.a,s=b.dataset.s,o=E.sel;
+  if(s)add({k:'t',x:420,y:200,text:s,size:110,font:'Arial'});
+  else if(['rect','ell','tri','star'].includes(a))add({k:'s',shape:a,x:380,y:170,w:200,h:200,c:E.co});
+  else if(a=='pv'||a=='nx'){E.i=Math.max(0,Math.min(E.slides.length-1,E.i+(a=='nx'?1:-1)));E.sel=null}
+  else if(a=='ad'){E.slides.splice(++E.i,0,{o:[]});E.sel=null}
+  else if(a=='ds'&&E.slides.length>1){E.slides.splice(E.i,1);E.i=Math.max(0,E.i-1);E.sel=null}
+  else if(a=='up'||a=='dn')o&&sc(o,a=='up'?1.15:1/1.15);
+  else if(a=='del'&&o){cs().o=cs().o.filter(x=>x!=o);E.sel=null}
+  else if(a=='png')dl(E.slides,S.name);
+  else if(['sel','tx','pen'].includes(a)){E.tool=a;$('#ed').querySelectorAll('[data-a=sel],[data-a=tx],[data-a=pen]').forEach(x=>x.classList.toggle('on',x==b))}
+  draw()};
+ $('#fo').onchange=e=>{E.fo=e.target.value;if(E.sel&&E.sel.k=='t')E.sel.font=E.fo;draw()};
+ $('#co').oninput=e=>{E.co=e.target.value;if(E.sel)E.sel.c=E.co;draw()};
+ $('#yt').oninput=e=>E.music=yt(e.target.value);
+ cv.onpointerdown=e=>{const p=xy(e);cv.setPointerCapture(e.pointerId);
+  if(E.tool=='pen'){E.st={k:'d',x:0,y:0,pts:[p,p],c:E.co,w:6};cs().o.push(E.st);E.sel=null}
+  else if(E.tool=='tx'){const x=prompt(t('txt'));if(x)add({k:'t',x:p[0],y:p[1],text:x,size:48,font:E.fo,c:E.co});E.tool='sel'}
+  else{E.sel=hit(p);E.dr=E.sel&&[p[0]-E.sel.x,p[1]-E.sel.y]}draw()};
+ cv.onpointermove=e=>{if(!E.st&&!E.dr)return;const p=xy(e);if(E.st)E.st.pts.push(p);else{E.sel.x=p[0]-E.dr[0];E.sel.y=p[1]-E.dr[1]}draw()};
+ cv.onpointerup=()=>{E.st=E.dr=null};
+ cv.ondblclick=e=>{const o=hit(xy(e));if(o&&o.k=='t'){const x=prompt(t('txt'),o.text);if(x!=null)o.text=x;draw()}};
+ cv.ondragover=e=>e.preventDefault();
+ cv.ondrop=e=>{e.preventDefault();const p=xy(e),s=e.dataTransfer.getData('img'),x=e.dataTransfer.getData('text/plain');
+  if(s){const w=300,h=w*(+e.dataTransfer.getData('ar')||.7);add({k:'i',src:s,x:p[0]-w/2,y:p[1]-h/2,w,h})}
+  else if(x)add({k:'t',x:p[0],y:p[1],text:x.trim().slice(0,200).replace(/(.{1,26})(\s+|$)/g,'$1\n').trim(),size:34,font:E.fo,c:E.co})};
+ draw();timer(S.cfg.b,()=>{net({t:'deck',slides:E.slides,music:E.music,wt:S.wt});show(`<div class="card pop"><h1>⏰</h1><p>${t('wait')}</p></div>`)})}
+onkeydown=e=>{if(/INPUT|SELECT/.test(e.target.tagName))return;
+ if(S.ph=='p'&&S.cur==S.me){if(e.key=='ArrowRight'||e.key==' ')sl(S.i+1);if(e.key=='ArrowLeft')sl(S.i-1)}
+ if(S.ph=='b'&&e.key=='Delete'&&E.sel){cs().o=cs().o.filter(o=>o!=E.sel);E.sel=null;draw()}};
+/* ---------- presenting + voting ---------- */
+function sl(i){if(S.cur==S.me)net({t:'sl',i:Math.max(0,Math.min(S.decks[S.cur].slides.length-1,i))})}
+function vote(v){net({t:'vote',v});document.querySelectorAll('.vb').forEach(b=>b.classList.toggle('on',+b.dataset.v==v));snd(400+v*60,.12)}
+function present(){const w=S.cur,d=S.decks[w],me=w==S.me;S.ph='p';
+ $('#mu').innerHTML=d.music?`<iframe allow=autoplay src="https://www.youtube.com/embed/${d.music}?autoplay=1&loop=1&playlist=${d.music}" style="width:1px;height:1px;border:0;position:fixed;left:-9px"></iframe>`:'';
+ show(`<div style="text-align:center;padding:12px"><h1 class=pop>🎤 ${S.players[w]}</h1><h2 style="margin:0">📖 ${d.wt||''}</h2>
+ <canvas class=sl id=cv width=960 height=540 style="width:min(960px,94vw,calc(60vh*1.7778));margin:10px"></canvas>
+ <div>${me?`<button class=btn onclick="sl(S.i-1)">◀</button><button class=btn onclick="sl(S.i+1)">▶</button><button class="btn p" onclick="net({t:'fin'})">${t('fin')}</button> <b id=vc>0 ${t('votes')}</b>`:`<p style="margin:0">${t('rate')}</p>`+[...Array(10)].map((_,i)=>`<button class="btn vb" data-v=${i+1} onclick=vote(${i+1})>${i+1}</button>`).join('')}</div></div>`);
+ redraw=()=>{const c=$('#cv');if(c)paint(c.getContext('2d'),d.slides[S.i]||{o:[]})};redraw();if(me)$('#cv').onclick=()=>sl(S.i+1)}
+/* ---------- TV-show reveal + podium ---------- */
+async function reveal(){S.ph='r';$('#mu').innerHTML='';redraw=()=>{};
+ const R=Object.keys(S.players).map(id=>{const v=Object.values(S.votes[id]||{});return{id,n:S.players[id],a:v.length?v.reduce((x,y)=>x+y)/v.length:0}}).sort((x,y)=>x.a-y.a),W=R.length,st=h=>show(`<div class=stage>${h}</div>`);
+ await sleep(1000);
+ for(let i=0;i<W-3;i++){st(`<h1 class=pop>${t('drum')}</h1><div class=pop style="font-size:6em">🥁</div>`);
+  for(let j=0;j<10;j++){snd(90+j*9,.1,'triangle');await sleep(200)}
+  st(`<h2 class=pop>#${W-i}</h2><h1 class=pop>${R[i].n}</h1><div id=sc style="font-size:6em;font-weight:800">0.0</div>`);
+  for(let j=1;j<=20;j++){$('#sc').textContent=(R[i].a*j/20).toFixed(1);snd(300+j*25,.04);await sleep(45)}
+  tada();await sleep(1600)}
+ const top=R.slice(-3).reverse(),P=[[1,'#c9d1d9',170,'🥈'],[0,'#ffd23f',250,'🥇'],[2,'#e08a3c',120,'🥉']];
+ st(`<h1>🏆</h1><div class=pod>${P.map(([i,c,h,m])=>top[i]?`<div class=col id=c${i}><div style="font-size:1.6em">${m} ${top[i].n}<br><b>${top[i].a.toFixed(1)}</b></div><div class=bl style="background:${c};height:${h}px">${i+1}</div></div>`:'').join('')}</div><div id=fx style="min-height:130px"></div>`);
+ for(const i of[2,1,0]){if(!top[i])continue;for(let j=0;j<8;j++){snd(100+j*10,.1,'triangle');await sleep(i?150:300)}await sleep(500);$('#c'+i).classList.add('up');tada()}
+ confetti();await sleep(1200);
+ $('#fx').innerHTML=`<p>${Object.keys(S.players).map(id=>`<button class=btn onclick="dl(S.decks['${id}'].slides,S.players['${id}'])">⬇ ${S.players[id]}</button>`).join('')}</p>`+(S.host?`<button class="btn p" onclick="again()">${t('again')}</button>`:'')}
+home();
+</script></body></html>
